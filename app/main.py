@@ -2,16 +2,17 @@ from fastapi import FastAPI, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .model_manager import ModelManager
-from .text_processing import process_text,split_text_numeric
+from .text_processing import process_text, split_text_numeric
 import pandas as pd
 
+# Solo guardamos rutas de modelos, no los cargamos aún
 model_paths = {
     "scaler_x": "models/scaler_x.pkl",
-    "scaler_y":"models/scaler_y.pkl",
+    "scaler_y": "models/scaler_y.pkl",
     "best_model": "models/best_model_mulinput.keras"
 }
 
-manager = ModelManager(model_paths)
+manager = ModelManager(model_paths)  # Lazy loading
 app = FastAPI(title="Movie Rating Prediction API")
 
 # Configuración CORS para aceptar POST desde cualquier dominio
@@ -40,22 +41,25 @@ async def predict(
         # Convertir a DataFrame
         df = pd.DataFrame({'title': [col1], 'description': [col2]})
         
+        # Preprocesamiento
         df_process = process_text(df)
         df_split = split_text_numeric(df_process)
         X_numeric = df_split['numeric']
         X_emb = manager.get_embedding_model().encode(df_split['text'])
 
-        # 2. Escalar numeric
+        # Escalar numeric (lazy loading)
         X_scaled = manager.scale_numeric(X_numeric)
 
-        # 3. Predicción final con modelo multi-input
+        # Predicción final con modelo multi-input (lazy loading)
         prediction = manager.predict_final(X_emb, X_scaled)
-        print(prediction)
-        Y_scaled = manager.scale_numeric_y(prediction)
-        # Convertir predicción a lista o float
-        prediction_val = prediction.tolist() if hasattr(prediction, "tolist") else float(prediction)
 
-        return JSONResponse(content={"prediction": float(Y_scaled[0][0])})
+        # Escalar predicción
+        Y_scaled = manager.scale_numeric_y(prediction)
+
+        # Convertir predicción a float
+        prediction_val = float(Y_scaled[0][0])
+
+        return JSONResponse(content={"prediction": prediction_val})
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
