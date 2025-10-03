@@ -7,7 +7,7 @@ from nltk.corpus import stopwords
 import os
 
 # Indicar a NLTK dónde buscar los datos
-nltk.data.path.append(os.path.join(os.getcwd(), ".venv", "nltk_data"))
+nltk.data.path.append(os.path.join(os.getcwd(),"nltk_data"))
 
 # Cargar stopwords
 stop_words = [x.lower() for x in stopwords.words("english")]
